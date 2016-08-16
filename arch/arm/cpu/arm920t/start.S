@@ -78,13 +78,64 @@ copyex:
 	ldr	r1, =0x3ff
 	ldr	r0, =INTSUBMSK
 	str	r1, [r0]
+# elif defined(CONFIG_S3C2440)
+    ldr r1, =0x7fff
+    ldr r0, =INTSUBMSK
+    str r1, [r0]
 # endif
 
+# if defined(CONFIG_S3C2440) 
+# define MPLLCON 0x4C000004 /* 系统主频配置寄存器 */
+# define UPLLCON 0x4C000008 /* USB频率配置寄存器 */
+# define CAMDIVN 0x4C000018 /* CAMERA时钟分频寄存器 */
+# define MMDIV_405 (0x7f<<12)
+# define MPSDIV_405 0x21
+# define UMDIV_48 (0x38<<12)
+# define UPSDIV_48 0X22
+
+        ldr r0, =CAMDIVN
+        mov r1, #0    
+        str r1, [r0]  
+
+    /* FCLK:HCLK:PCLK = 1:2:4 */
+    /* default FCLK is 120 MHz ! */
+    ldr r0, =CLKDIVN
+    mov r1, #0x05 
+    str r1, [r0]  
+
+    /* 如果HDIVN不等于0，CPU必须设置为异步总线模式 */
+    mrc p15, 0, r0, c1, c0, 0
+    orr r0, r0, #0xC0000000
+    mcr p15, 0, r0, c1, c0, 0
+
+    ldr r0, =UPLLCON
+    mov r1, #UMDIV_48 /* USB时钟48MHz */
+    add r1, r1, #UPSDIV_48
+    str r1, [r0] 
+    /*           
+     * When you set MPLL&UPLL values, you have to set the UPLL
+     * value first and then the MPLL value. (Needs intervals
+     * approximately 7 NOP)
+     */           
+    nop           
+    nop           
+    nop           
+    nop           
+    nop           
+    nop           
+    nop           
+    ldr r0, =MPLLCON
+    mov r1, #MMDIV_405 /* cpu时钟 400MHz */
+    add r1, r1, #MPSDIV_405
+    str r1, [r0]
+# else
 	/* FCLK:HCLK:PCLK = 1:2:4 */
 	/* default FCLK is 120 MHz ! */
 	ldr	r0, =CLKDIVN
 	mov	r1, #3
 	str	r1, [r0]
+#endif
+
 #endif	/* CONFIG_S3C24X0 */
 
 	/*
